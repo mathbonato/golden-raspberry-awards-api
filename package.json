@@ -1,0 +1,30 @@
+{
+  "name": "gra-api",
+  "version": "1.0.0",
+  "description": "API RESTful para Golden Raspberry Awards",
+  "main": "dist/server.js",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "test": "vitest",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev"
+  },
+  "dependencies": {
+    "@fastify/cors": "^8.4.1",
+    "@prisma/client": "^5.10.0",
+    "fastify": "^4.26.1",
+    "csv-parse": "^5.5.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "prisma": "^5.10.0",
+    "tsx": "^4.7.1",
+    "typescript": "^5.0.0",
+    "vitest": "^1.2.2",
+    "node-fetch": "^3.3.2",
+    "@types/node-fetch": "^2.6.11"
+  }
+}
