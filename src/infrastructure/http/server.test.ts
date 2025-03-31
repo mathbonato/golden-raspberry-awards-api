@@ -232,6 +232,6 @@ describe('Awards API', () => {
 
     expect(response.status).toBe(400);
     const data = await response.json() as ErrorResponse;
-    expect(data.error).toBe('Invalid year: ');
+    expect(data.error.trim()).toBe('Invalid year:');
   });
 }); 

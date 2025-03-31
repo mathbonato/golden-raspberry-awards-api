@@ -4,9 +4,11 @@ import { MovieRecord } from '../../shared/types/index.ts';
 import { AppError } from '../../shared/errors/appError.ts';
 
 export class CSVReader {
-  static async readCSV(filePath: string): Promise<MovieRecord[]> {
+  static async readCSV(input: string | Buffer): Promise<MovieRecord[]> {
     try {
-      const fileContent = await readFile(filePath, 'utf-8');
+      const fileContent = typeof input === 'string' 
+        ? await readFile(input, 'utf-8')
+        : input.toString('utf-8');
       
       return new Promise((resolve, reject) => {
         parse(fileContent, {

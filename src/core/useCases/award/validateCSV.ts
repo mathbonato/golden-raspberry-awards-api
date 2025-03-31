@@ -1,13 +1,6 @@
 import { AppError } from '../../../shared/errors/appError.ts';
 import { CSVReader } from '../../../utils/csv/validator.ts';
-import { writeFile } from 'fs/promises';
-import { join } from 'path';
-import { dirname } from 'path';
-import { fileURLToPath } from 'url';
 import { MovieRecord } from '../../../shared/types/index.ts';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 
 export class ValidateCSVUseCase {
   private validateRequiredColumns(record: MovieRecord): void {
@@ -45,11 +38,8 @@ export class ValidateCSVUseCase {
   }
 
   async execute(file: Buffer): Promise<MovieRecord[]> {
-    const tempPath = join(__dirname, '..', '..', '..', '..', 'temp.csv');
-    await writeFile(tempPath, file);
-
     try {
-      const records = await CSVReader.readCSV(tempPath);
+      const records = await CSVReader.readCSV(file);
 
       if (records.length > 0) {
         this.validateRequiredColumns(records[0]);
