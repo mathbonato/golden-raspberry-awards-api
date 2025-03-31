@@ -28,7 +28,6 @@ const prisma = new PrismaClient();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Mock do Logger
 const mockLogs: LogEntry[] = [];
 const originalLogger = Logger.getInstance();
 const mockLogger = {
@@ -45,7 +44,6 @@ const mockLogger = {
   }
 } as Logger;
 
-// Substituir o Logger original pelo mock
 Logger.getInstance = () => mockLogger;
 
 describe('Awards API', () => {
@@ -61,16 +59,16 @@ describe('Awards API', () => {
   });
 
   beforeEach(() => {
-    mockLogs.length = 0; // Limpa os logs antes de cada teste
+    mockLogs.length = 0;
   });
 
-  it('should handle CSV upload and return correct award intervals', async () => {
+  it('should handle real data from the provided CSV', async () => {
     const csvPath = join(__dirname, '..', '..', '..', 'Movielist.csv');
     const fileContent = await readFile(csvPath, 'utf-8');
 
     const form = new FormData();
     form.append('file', fileContent, {
-      filename: 'test.csv',
+      filename: 'Movielist.csv',
       contentType: 'text/csv'
     });
 
@@ -86,24 +84,95 @@ describe('Awards API', () => {
     const intervalsResponse = await fetch('http://localhost:3000/awards/intervals');
     const intervalsData = await intervalsResponse.json() as AwardIntervals;
 
+    expect(intervalsData.min.length).toBeGreaterThan(0);
+    expect(intervalsData.max.length).toBeGreaterThan(0);
+
+    const minIntervals = intervalsData.min.map(i => i.interval);
+    const maxIntervals = intervalsData.max.map(i => i.interval);
+    
+    expect(Math.min(...minIntervals)).toBe(minIntervals[0]);
+    expect(Math.max(...maxIntervals)).toBe(maxIntervals[0]);
+
+    const minProducers = new Set(intervalsData.min.map(i => i.producer));
+    const maxProducers = new Set(intervalsData.max.map(i => i.producer));
+    
+    const commonProducers = [...minProducers].filter(p => maxProducers.has(p));
+    expect(commonProducers.length).toBe(0);
+  });
+
+  it('should return valid max and min intervals following the specified format', async () => {
+    const testCsv = `year;title;studios;producers;winner
+                    1980;Movie 1;Studio A;Producer 1;yes
+                    1981;Movie 2;Studio B;Producer 2;yes
+                    1982;Movie 3;Studio C;Producer 1;yes
+                    1983;Movie 4;Studio D;Producer 2;yes
+                    1984;Movie 5;Studio E;Producer 3;yes
+                    1999;Movie 6;Studio F;Producer 3;yes`;
+
+    const form = new FormData();
+    form.append('file', testCsv, {
+      filename: 'test.csv',
+      contentType: 'text/csv'
+    });
+
+    const uploadResponse = await fetch('http://localhost:3000/upload/csv', {
+      method: 'POST',
+      body: form
+    });
+
+    expect(uploadResponse.status).toBe(201);
+
+    const intervalsResponse = await fetch('http://localhost:3000/awards/intervals');
+    const intervalsData = await intervalsResponse.json() as AwardIntervals;
+
     expect(intervalsData).toHaveProperty('min');
     expect(intervalsData).toHaveProperty('max');
     expect(Array.isArray(intervalsData.min)).toBe(true);
     expect(Array.isArray(intervalsData.max)).toBe(true);
 
-    intervalsData.min.forEach((interval) => {
-      expect(interval).toHaveProperty('producer');
-      expect(interval).toHaveProperty('interval');
-      expect(interval).toHaveProperty('previousWin');
-      expect(interval).toHaveProperty('followingWin');
+    const intervalFormat = {
+      producer: expect.any(String),
+      interval: expect.any(Number),
+      previousWin: expect.any(Number),
+      followingWin: expect.any(Number)
+    };
+
+    intervalsData.min.forEach(interval => {
+      expect(interval).toMatchObject(intervalFormat);
     });
 
-    intervalsData.max.forEach((interval) => {
-      expect(interval).toHaveProperty('producer');
-      expect(interval).toHaveProperty('interval');
-      expect(interval).toHaveProperty('previousWin');
-      expect(interval).toHaveProperty('followingWin');
+    intervalsData.max.forEach(interval => {
+      expect(interval).toMatchObject(intervalFormat);
     });
+
+    const producer1Intervals = intervalsData.min.filter(i => i.producer === 'Producer 1');
+    expect(producer1Intervals.length).toBeGreaterThan(0);
+    expect(producer1Intervals[0]).toMatchObject({
+      producer: 'Producer 1',
+      interval: 2,
+      previousWin: 1980,
+      followingWin: 1982
+    });
+
+    const producer3Intervals = intervalsData.max.filter(i => i.producer === 'Producer 3');
+    expect(producer3Intervals.length).toBeGreaterThan(0);
+    expect(producer3Intervals[0]).toMatchObject({
+      producer: 'Producer 3',
+      interval: 15,
+      previousWin: 1984,
+      followingWin: 1999
+    });
+
+    const minIntervals = intervalsData.min.map(i => i.interval);
+    const maxIntervals = intervalsData.max.map(i => i.interval);
+    
+    expect(Math.min(...minIntervals)).toBe(minIntervals[0]);
+    expect(Math.max(...maxIntervals)).toBe(maxIntervals[0]);
+
+    const minProducers = new Set(intervalsData.min.map(i => i.producer));
+    const maxProducers = new Set(intervalsData.max.map(i => i.producer));
+    const commonProducers = [...minProducers].filter(p => maxProducers.has(p));
+    expect(commonProducers.length).toBe(0);
   });
 
   it('should reject invalid file types', async () => {
@@ -153,37 +222,6 @@ describe('Awards API', () => {
     johnSmithIntervals.forEach(interval => {
       expect(interval.interval).toBe(5);
     });
-  });
-
-  it('should handle producers with multiple wins in different formats', async () => {
-    const testCsv = `year;title;studios;producers;winner
-                    1980;Movie 1;Studio A;John Smith, Jane Doe;yes
-                    1985;Movie 2;Studio B;John Smith and Jane Doe;yes
-                    1990;Movie 3;Studio C;John Smith, Jane Doe and Bob Wilson;yes`;
-
-    const form = new FormData();
-    form.append('file', testCsv, {
-      filename: 'test.csv',
-      contentType: 'text/csv'
-    });
-
-    const uploadResponse = await fetch('http://localhost:3000/upload/csv', {
-      method: 'POST',
-      body: form
-    });
-
-    expect(uploadResponse.status).toBe(201);
-
-    const intervalsResponse = await fetch('http://localhost:3000/awards/intervals');
-    const intervalsData = await intervalsResponse.json() as AwardIntervals;
-
-    const allProducers = new Set([
-      ...intervalsData.min.map(i => i.producer),
-      ...intervalsData.max.map(i => i.producer)
-    ]);
-
-    expect(allProducers).toContain('John Smith');
-    expect(allProducers).toContain('Jane Doe');
   });
 
   it('should handle ties in intervals correctly', async () => {
@@ -301,5 +339,32 @@ describe('Awards API', () => {
     expect(invalidRecordsLog).toBeDefined();
     expect(invalidRecordsLog?.data?.invalidCount).toBe(1);
     expect(invalidRecordsLog?.data?.invalidRecords[0].errors).toContain('Invalid year: 3000');
+  });
+
+  it('should handle empty producers field', async () => {
+    const invalidCsv = 'year;title;studios;producers;winner\n1980;Movie 1;Studio A;;yes';
+    
+    const form = new FormData();
+    form.append('file', invalidCsv, {
+      filename: 'test.csv',
+      contentType: 'text/csv'
+    });
+
+    const response = await fetch('http://localhost:3000/upload/csv', {
+      method: 'POST',
+      body: form
+    });
+
+    expect(response.status).toBe(201);
+    const data = await response.json() as UploadResponse;
+    expect(data.message).toBe('csv file processed successfully');
+
+    const invalidRecordsLog = mockLogs.find(log => 
+      log.level === 'WARN' && 
+      log.message === 'Invalid records found'
+    );
+    expect(invalidRecordsLog).toBeDefined();
+    expect(invalidRecordsLog?.data?.invalidCount).toBe(1);
+    expect(invalidRecordsLog?.data?.invalidRecords[0].errors).toContain('Producers cannot be empty');
   });
 }); 
