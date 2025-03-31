@@ -22,8 +22,8 @@ export async function createServer() {
   });
 
   const movieRepository = new PrismaMovieRepository(prisma);
-  const calculateIntervalsUseCase = new CalculateIntervalsUseCase();
   const uploadMoviesUseCase = new UploadMoviesUseCase(movieRepository);
+  const calculateIntervalsUseCase = new CalculateIntervalsUseCase();
   const validateCSVUseCase = new ValidateCSVUseCase();
 
   const awardController = new AwardController(movieRepository, calculateIntervalsUseCase);

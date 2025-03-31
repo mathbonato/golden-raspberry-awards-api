@@ -38,9 +38,8 @@ export class CalculateIntervalsUseCase {
     return winnersByProducer;
   }
 
-  private calculateIntervalsForProducer(years: number[]): { min: number; max: number; minIndex: number; maxIndex: number } {
-    this.logger.debug('Calculating intervals for producer', { data: { years } });
-    const sortedYears = [...years].sort((a, b) => a - b);
+  private calculateIntervalsForProducer(sortedYears: number[]): { min: number; max: number; minIndex: number; maxIndex: number } {
+    this.logger.debug('Calculating intervals for producer', { data: { years: sortedYears } });
     const intervals: number[] = [];
 
     for (let i = 1; i < sortedYears.length; i++) {
@@ -100,16 +99,16 @@ export class CalculateIntervalsUseCase {
         return; 
       }
 
-      const { min: minInterval, minIndex } = this.calculateIntervalsForProducer(years);
       const sortedYears = [...years].sort((a, b) => a - b);
-      const minYears = this.findWinningYears(sortedYears, minIndex);
+      const { min: minInterval, minIndex } = this.calculateIntervalsForProducer(sortedYears);
+      const { previous, following } = this.findWinningYears(sortedYears, minIndex);
 
       producersWithIntervals.push(
         this.createProducerInterval(
           producer,
           minInterval,
-          minYears.previous,
-          minYears.following
+          previous,
+          following
         )
       );
     });
@@ -137,16 +136,16 @@ export class CalculateIntervalsUseCase {
         return;
       }
 
-      const { max: maxInterval, maxIndex } = this.calculateIntervalsForProducer(years);
       const sortedYears = [...years].sort((a, b) => a - b);
-      const maxYears = this.findWinningYears(sortedYears, maxIndex);
+      const { max: maxInterval, maxIndex } = this.calculateIntervalsForProducer(sortedYears);
+      const { previous, following } = this.findWinningYears(sortedYears, maxIndex); 
 
       producersWithIntervals.push(
         this.createProducerInterval(
           producer,
           maxInterval,
-          maxYears.previous,
-          maxYears.following
+          previous,
+          following
         )
       );
     });
