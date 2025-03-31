@@ -1,4 +1,4 @@
-import { writeFile, appendFile } from 'fs/promises';
+import { writeFile, appendFile, access } from 'fs/promises';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -29,8 +29,11 @@ export class Logger {
 
   private async ensureLogFile(): Promise<void> {
     try {
+      // Verifica se o arquivo existe
+      await access(this.logFile);
+    } catch {
+      // Se o arquivo não existe, cria um novo
       await writeFile(this.logFile, '');
-    } catch (error) {
     }
   }
 
