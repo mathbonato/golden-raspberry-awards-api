@@ -234,4 +234,23 @@ describe('Awards API', () => {
     const data = await response.json() as ErrorResponse;
     expect(data.error.trim()).toBe('Invalid year:');
   });
+
+  it('should validate future year', async () => {
+    const invalidCsv = 'year;title;studios;producers;winner\n3000;Movie 1;Studio A;John Smith;yes';
+    
+    const form = new FormData();
+    form.append('file', invalidCsv, {
+      filename: 'test.csv',
+      contentType: 'text/csv'
+    });
+
+    const response = await fetch('http://localhost:3000/upload/csv', {
+      method: 'POST',
+      body: form
+    });
+
+    expect(response.status).toBe(400);
+    const data = await response.json() as ErrorResponse;
+    expect(data.error).toBe('Invalid year: 3000');
+  });
 }); 
