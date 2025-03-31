@@ -2,12 +2,12 @@
   "name": "gra-api",
   "version": "1.0.0",
   "description": "API RESTful para Golden Raspberry Awards",
-  "main": "dist/server.js",
+  "main": "dist/infrastructure/http/server.js",
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/server.ts",
+    "dev": "tsx watch src/infrastructure/http/server.ts",
     "build": "tsc",
-    "start": "node dist/server.js",
+    "start": "node dist/infrastructure/http/server.js",
     "test": "vitest",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev"

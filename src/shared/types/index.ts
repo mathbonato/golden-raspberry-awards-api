@@ -1,18 +1,10 @@
-export interface Movie {
+export interface MovieData {
   id: number;
   year: number;
   title: string;
   studios: string;
   producers: string;
   winner: boolean;
-}
-
-export interface MovieRecord {
-  year: string;
-  title: string;
-  studios: string;
-  producers: string;
-  winner: string;
 }
 
 export interface ProducerInterval {
@@ -25,4 +17,12 @@ export interface ProducerInterval {
 export interface AwardIntervals {
   min: ProducerInterval[];
   max: ProducerInterval[];
+}
+
+export interface MovieRecord {
+  year: string;
+  title: string;
+  studios: string;
+  producers: string;
+  winner: string;
 } 
