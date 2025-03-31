@@ -21,8 +21,7 @@ export class AwardController {
       const result = this.calculateIntervalsUseCase.execute(winners);
       this.logger.info('Intervals calculated successfully', {
         data: {
-          minIntervalCount: result.min.length,
-          maxIntervalCount: result.max.length
+          result
         }
       });
 
