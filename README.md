@@ -37,7 +37,7 @@ mkdir logs
 
 1. Start the server:
 ```bash
-npm start
+npm run dev
 ```
 
 The server will start on port 3000.
