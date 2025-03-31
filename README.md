@@ -1,54 +1,80 @@
-# API Golden Raspberry Awards
+# Golden Raspberry Awards API
 
-API RESTful para consulta de indicados e vencedores da categoria Pior Filme do Golden Raspberry Awards.
+A RESTful API for reading and analyzing the list of nominees and winners of the Golden Raspberry Awards for Worst Picture category.
 
-## Requisitos
+## Features
 
-- Node.js 18 ou superior
-- npm ou yarn
+- CSV file upload and processing
+- Calculation of producer award intervals
+- Data validation and error handling
+- In-memory database using SQLite
+- Integration tests coverage
 
-## Instalação
+## Prerequisites
 
-1. Clone o repositório
-2. Instale as dependências:
+- Node.js (v18 or higher)
+- npm (v9 or higher)
+
+## Installation
+
+1. Clone the repository:
+```bash
+git clone https://github.com/yourusername/gra-api.git
+cd gra-api
+```
+
+2. Install dependencies:
 ```bash
 npm install
 ```
 
-3. Gere o cliente Prisma:
+3. Create a `logs` directory in the project root:
 ```bash
-npm run prisma:generate
+mkdir logs
 ```
 
-4. Execute as migrações do banco de dados:
+## Running the Application
+
+1. Start the server:
 ```bash
-npm run prisma:migrate
+npm start
 ```
 
-## Executando a aplicação
+The server will start on port 3000.
 
-Para iniciar o servidor em modo desenvolvimento:
-```bash
-npm run dev
-```
+## Running Tests
 
-O servidor estará disponível em `http://localhost:3000`
-
-## Executando os testes
-
-Para executar os testes de integração:
 ```bash
 npm test
 ```
 
-## Endpoints
+## API Endpoints
 
-### GET /awards/intervals
+### 1. Upload CSV File
+```
+POST /upload/csv
 
-Retorna os produtores com maior e menor intervalo entre prêmios consecutivos.
+Content-Type: multipart/form-data
 
-Exemplo de resposta:
-```json
+Request Body:
+- file: CSV file with the following columns:
+  - year: Movie release year
+  - title: Movie title
+  - studios: Production studios
+  - producers: Movie producers
+  - winner: Award winner (yes/"")
+
+Response:
+{
+  "message": "csv file processed successfully"
+}
+```
+
+### 2. Get Award Intervals
+```
+GET /awards/intervals
+
+Response:
 {
   "min": [
     {
@@ -67,4 +93,43 @@ Exemplo de resposta:
     }
   ]
 }
-``` 
+```
+
+## CSV File Format
+
+The CSV file should be semicolon-separated with the following columns:
+- year: Movie release year (required)
+- title: Movie title (required)
+- studios: Production studios (required)
+- producers: Movie producers (required)
+- winner: Award winner (yes/"")
+
+Example:
+```csv
+year;title;studios;producers;winner
+1980;Can't Stop the Music;Associated Film Distribution;Allan Carr;yes
+1980;Cruising;Lorimar Productions, United Artists;Jerry Weintraub;
+```
+
+## Sample Data
+
+A sample CSV file with the complete list of nominees and winners is available in the `Movielist.csv` file in the project root.
+
+## Error Handling
+
+The API handles various error cases:
+- Invalid file types
+- Missing required columns
+- Invalid year values
+- Empty producer fields
+- Future years
+
+All errors are logged in the `logs/app.log` file.
+
+## Technical Details
+
+- Built with Node.js and TypeScript
+- Uses SQLite as an in-memory database
+- Implements Richardson Maturity Model Level 2
+- Includes comprehensive integration tests
+- Logs all operations and errors
