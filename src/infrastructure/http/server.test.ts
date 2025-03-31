@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { PrismaClient } from '@prisma/client';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -7,6 +7,7 @@ import FormData from 'form-data';
 import { readFile } from 'fs/promises';
 import { createServer } from './server.ts';
 import { AwardIntervals } from '../../shared/types/index.ts';
+import { Logger } from '../../utils/logger.ts';
 
 interface UploadResponse {
   message: string;
@@ -16,9 +17,36 @@ interface ErrorResponse {
   error: string;
 }
 
+interface LogEntry {
+  level: string;
+  message: string;
+  correlationId?: string;
+  data?: any;
+}
+
 const prisma = new PrismaClient();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+// Mock do Logger
+const mockLogs: LogEntry[] = [];
+const originalLogger = Logger.getInstance();
+const mockLogger = {
+  ...originalLogger,
+  info: originalLogger.info.bind(originalLogger),
+  debug: originalLogger.debug.bind(originalLogger),
+  warn: async (message: string, context?: any) => {
+    mockLogs.push({ level: 'WARN', message, ...context });
+    await originalLogger.warn(message, context);
+  },
+  error: async (message: string, context?: any) => {
+    mockLogs.push({ level: 'ERROR', message, ...context });
+    await originalLogger.error(message, context);
+  }
+} as Logger;
+
+// Substituir o Logger original pelo mock
+Logger.getInstance = () => mockLogger;
 
 describe('Awards API', () => {
   let app: any;
@@ -30,6 +58,10 @@ describe('Awards API', () => {
   afterAll(async () => {
     await app.close();
     await prisma.$disconnect();
+  });
+
+  beforeEach(() => {
+    mockLogs.length = 0; // Limpa os logs antes de cada teste
   });
 
   it('should handle CSV upload and return correct award intervals', async () => {
@@ -216,8 +248,7 @@ describe('Awards API', () => {
   });
 
   it('should validate required fields', async () => {
-    const invalidCsv = `year;title;studios;producers;winner
-                        ;Movie 1;Studio A;John Smith;yes`;
+    const invalidCsv = 'year;title;studios;producers;winner\n;Movie 1;Studio A;John Smith;yes';
 
     const form = new FormData();
     form.append('file', invalidCsv, {
@@ -230,9 +261,18 @@ describe('Awards API', () => {
       body: form
     });
 
-    expect(response.status).toBe(400);
-    const data = await response.json() as ErrorResponse;
-    expect(data.error.trim()).toBe('Invalid year:');
+    expect(response.status).toBe(201);
+    const data = await response.json() as UploadResponse;
+    expect(data.message).toBe('csv file processed successfully');
+
+    // Verifica os logs
+    const invalidRecordsLog = mockLogs.find(log => 
+      log.level === 'WARN' && 
+      log.message === 'Invalid records found'
+    );
+    expect(invalidRecordsLog).toBeDefined();
+    expect(invalidRecordsLog?.data?.invalidCount).toBe(1);
+    expect(invalidRecordsLog?.data?.invalidRecords[0].errors).toContain('Invalid year: ');
   });
 
   it('should validate future year', async () => {
@@ -249,8 +289,17 @@ describe('Awards API', () => {
       body: form
     });
 
-    expect(response.status).toBe(400);
-    const data = await response.json() as ErrorResponse;
-    expect(data.error).toBe('Invalid year: 3000');
+    expect(response.status).toBe(201);
+    const data = await response.json() as UploadResponse;
+    expect(data.message).toBe('csv file processed successfully');
+
+    // Verifica os logs
+    const invalidRecordsLog = mockLogs.find(log => 
+      log.level === 'WARN' && 
+      log.message === 'Invalid records found'
+    );
+    expect(invalidRecordsLog).toBeDefined();
+    expect(invalidRecordsLog?.data?.invalidCount).toBe(1);
+    expect(invalidRecordsLog?.data?.invalidRecords[0].errors).toContain('Invalid year: 3000');
   });
 }); 
