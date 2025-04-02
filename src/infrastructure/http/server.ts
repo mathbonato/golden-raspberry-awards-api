@@ -10,19 +10,12 @@ import { readFile } from 'fs/promises';
 import { join } from 'path';
 import { Logger } from '../../utils/logger.ts';
 
-export async function createServer() {
-  const app = fastify();
+async function loadInitialCSV(
+  validateCSVUseCase: ValidateCSVUseCase,
+  uploadMoviesUseCase: UploadMoviesUseCase
+) {
   const logger = Logger.getInstance();
-
-  await app.register(cors, { origin: true });
-
-  const movieRepository = new MemoryMovieRepository();
-  const uploadMoviesUseCase = new UploadMoviesUseCase(movieRepository);
-  const calculateIntervalsUseCase = new CalculateIntervalsUseCase();
-  const validateCSVUseCase = new ValidateCSVUseCase();
-
-  const awardController = new AwardController(movieRepository, calculateIntervalsUseCase);
-
+  
   try {
     logger.info('Loading initial CSV file');
     const csvPath = join(process.cwd(), 'Movielist.csv');
@@ -36,6 +29,22 @@ export async function createServer() {
     });
     throw error;
   }
+}
+
+export async function createServer() {
+  const app = fastify();
+  const logger = Logger.getInstance();
+
+  await app.register(cors, { origin: true });
+
+  const movieRepository = new MemoryMovieRepository();
+  const uploadMoviesUseCase = new UploadMoviesUseCase(movieRepository);
+  const calculateIntervalsUseCase = new CalculateIntervalsUseCase();
+  const validateCSVUseCase = new ValidateCSVUseCase();
+
+  const awardController = new AwardController(movieRepository, calculateIntervalsUseCase);
+
+  await loadInitialCSV(validateCSVUseCase, uploadMoviesUseCase);
 
   await awardRoutes(app, awardController);
 
