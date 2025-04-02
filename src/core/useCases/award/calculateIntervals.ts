@@ -46,8 +46,8 @@ export class CalculateIntervalsUseCase {
   }
 
   private calculateIntervals(winnersByProducer: Map<string, number[]>): AwardIntervals {
-    let minInterval = Infinity;
-    let maxInterval = -Infinity;
+    let globalMinInterval = Infinity;
+    let globalMaxInterval = -Infinity;
     const minProducers: ProducerInterval[] = [];
     const maxProducers: ProducerInterval[] = [];
 
@@ -59,25 +59,25 @@ export class CalculateIntervalsUseCase {
       });
 
       for (let i = 1; i < years.length; i++) {
-        const interval = years[i] - years[i - 1];
+        const currentInterval = years[i] - years[i - 1];
         const intervalData = this.createProducerInterval(
           producer,
-          interval,
+          currentInterval,
           years[i - 1],
           years[i]
         );
 
-        if (interval <= minInterval) {
-          if (interval < minInterval) {
-            minInterval = interval;
+        if (currentInterval <= globalMinInterval) {
+          if (currentInterval < globalMinInterval) {
+            globalMinInterval = currentInterval;
             minProducers.length = 0;
           }
           minProducers.push(intervalData);
         }
 
-        if (interval >= maxInterval) {
-          if (interval > maxInterval) {
-            maxInterval = interval;
+        if (currentInterval >= globalMaxInterval) {
+          if (currentInterval > globalMaxInterval) {
+            globalMaxInterval = currentInterval;
             maxProducers.length = 0;
           }
           maxProducers.push(intervalData);
