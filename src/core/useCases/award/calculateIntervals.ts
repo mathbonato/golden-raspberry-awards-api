@@ -6,64 +6,34 @@ export class CalculateIntervalsUseCase {
   private readonly logger = Logger.getInstance();
 
   private extractProducerNames(producers: string): string[] {
-    this.logger.debug('Extracting producer names', { data: { producers } });
     const names = producers
       .split(/,\s*and\s*|\s*and\s*|,\s*/)
       .map(name => name.trim())
       .filter(name => name.length > 0);
-    this.logger.debug('Producer names extracted', { data: { names } });
     return names;
   }
 
   private groupWinnersByProducer(winners: Movie[]): Map<string, number[]> {
-    this.logger.info('Grouping winners by producer', { data: { winnerCount: winners.length } });
-    const winnersByProducer = new Map<string, number[]>();
+    const map = new Map<string, number[]>();
 
-    winners.forEach((movie) => {
+    for (const movie of winners) {
       const producerNames = this.extractProducerNames(movie.producers);
-      producerNames.forEach(producer => {
-        if (!winnersByProducer.has(producer)) {
-          winnersByProducer.set(producer, []);
-        }
-        winnersByProducer.get(producer)?.push(movie.year);
-      });
-    });
-
-    this.logger.info('Winners grouped by producer', { 
-      data: {
-        producerCount: winnersByProducer.size,
-        producers: Array.from(winnersByProducer.keys())
+      for (const producer of producerNames) {
+        const years = map.get(producer) ?? [];
+        years.push(movie.year);
+        map.set(producer, years);
       }
-    });
-    return winnersByProducer;
-  }
-
-  private calculateIntervalsForProducer(sortedYears: number[]): { min: number; max: number; minIndex: number; maxIndex: number } {
-    this.logger.debug('Calculating intervals for producer', { data: { years: sortedYears } });
-    const intervals: number[] = [];
-
-    for (let i = 1; i < sortedYears.length; i++) {
-      intervals.push(sortedYears[i] - sortedYears[i - 1]);
     }
 
-    const minInterval = Math.min(...intervals);
-    const maxInterval = Math.max(...intervals);
+    for (const [producer, years] of map.entries()) {
+      map.set(producer, years.sort((a, b) => a - b));
+    }
 
-    this.logger.debug('Intervals calculated', { 
-      data: {
-        minInterval, 
-        maxInterval, 
-        minIndex: intervals.indexOf(minInterval),
-        maxIndex: intervals.indexOf(maxInterval)
-      }
+    this.logger.debug('Winners grouped by producer (sorted)', {
+      data: Object.fromEntries(map.entries())
     });
 
-    return {
-      min: minInterval,
-      max: maxInterval,
-      minIndex: intervals.indexOf(minInterval),
-      maxIndex: intervals.indexOf(maxInterval)
-    };
+    return map;
   }
 
   private createProducerInterval(
@@ -72,115 +42,69 @@ export class CalculateIntervalsUseCase {
     previousWin: number,
     followingWin: number
   ): ProducerInterval {
-    return {
-      producer,
-      interval,
-      previousWin,
-      followingWin
-    };
+    return { producer, interval, previousWin, followingWin };
   }
 
-  private findWinningYears(years: number[], index: number): { previous: number; following: number } {
-    const result = {
-      previous: years[index],
-      following: years[index + 1]
-    };
-    this.logger.debug('Winning years found', { data: { result } });
-    return result;
-  }
+  private calculateIntervals(winnersByProducer: Map<string, number[]>): AwardIntervals {
+    let minInterval = Infinity;
+    let maxInterval = -Infinity;
+    const minProducers: ProducerInterval[] = [];
+    const maxProducers: ProducerInterval[] = [];
 
-  private findProducersWithMinInterval(winnersByProducer: Map<string, number[]>): ProducerInterval[] {
-    this.logger.info('Finding producers with minimum interval');
-    const producersWithIntervals: ProducerInterval[] = [];
+    for (const [producer, years] of winnersByProducer.entries()) {
+      if (years.length < 2) continue;
 
-    winnersByProducer.forEach((years, producer) => {
-      if (years.length < 2) {
-        this.logger.debug('Producer ignored - less than 2 wins', { data: { producer, years } });
-        return; 
-      }
+      this.logger.debug('Processing producer intervals', {
+        data: { producer, years }
+      });
 
-      const sortedYears = [...years].sort((a, b) => a - b);
-      const { min: minInterval, minIndex } = this.calculateIntervalsForProducer(sortedYears);
-      const { previous, following } = this.findWinningYears(sortedYears, minIndex);
-
-      producersWithIntervals.push(
-        this.createProducerInterval(
+      for (let i = 1; i < years.length; i++) {
+        const interval = years[i] - years[i - 1];
+        const intervalData = this.createProducerInterval(
           producer,
-          minInterval,
-          previous,
-          following
-        )
-      );
-    });
+          interval,
+          years[i - 1],
+          years[i]
+        );
 
-    producersWithIntervals.sort((a, b) => a.interval - b.interval);
-    const minInterval = producersWithIntervals[0]?.interval;
+        if (interval <= minInterval) {
+          if (interval < minInterval) {
+            minInterval = interval;
+            minProducers.length = 0;
+          }
+          minProducers.push(intervalData);
+        }
 
-    const result = producersWithIntervals.filter(item => item.interval === minInterval);
-    this.logger.info('Producers with minimum interval found', { 
-      data: { 
-        minInterval,
-        producers: result.map(p => p.producer)
+        if (interval >= maxInterval) {
+          if (interval > maxInterval) {
+            maxInterval = interval;
+            maxProducers.length = 0;
+          }
+          maxProducers.push(intervalData);
+        }
       }
-    });
-    return result;
-  }
+    }
 
-  private findProducersWithMaxInterval(winnersByProducer: Map<string, number[]>): ProducerInterval[] {
-    this.logger.info('Finding producers with maximum interval');
-    const producersWithIntervals: ProducerInterval[] = [];
-
-    winnersByProducer.forEach((years, producer) => {
-      if (years.length < 2) {
-        this.logger.debug('Producer ignored - less than 2 wins', { data: { producer, years } });
-        return;
-      }
-
-      const sortedYears = [...years].sort((a, b) => a - b);
-      const { max: maxInterval, maxIndex } = this.calculateIntervalsForProducer(sortedYears);
-      const { previous, following } = this.findWinningYears(sortedYears, maxIndex); 
-
-      producersWithIntervals.push(
-        this.createProducerInterval(
-          producer,
-          maxInterval,
-          previous,
-          following
-        )
-      );
-    });
-
-    producersWithIntervals.sort((a, b) => b.interval - a.interval);
-    const maxInterval = producersWithIntervals[0]?.interval;
-
-    const result = producersWithIntervals.filter(item => item.interval === maxInterval);
-    this.logger.info('Producers with maximum interval found', { 
-      data: {
-        maxInterval,
-        producers: result.map(p => p.producer)
-      }
-    });
-    return result;
+    return { min: minProducers, max: maxProducers };
   }
 
   execute(winners: Movie[]): AwardIntervals {
-    this.logger.info('Starting intervals calculation', { data: { winnerCount: winners.length } });
+    this.logger.info('Calculating intervals', {
+      data: { totalWinners: winners.length }
+    });
+
     const winnersByProducer = this.groupWinnersByProducer(winners);
+    const result = this.calculateIntervals(winnersByProducer);
 
-    const result = {
-      min: this.findProducersWithMinInterval(winnersByProducer),
-      max: this.findProducersWithMaxInterval(winnersByProducer)
-    };
-
-    this.logger.info('Intervals calculation completed', {
+    this.logger.info('Finished calculating intervals', {
       data: {
-        minIntervalCount: result.min.length,
-        maxIntervalCount: result.max.length,
         minInterval: result.min[0]?.interval,
-        maxInterval: result.max[0]?.interval
+        maxInterval: result.max[0]?.interval,
+        producersMin: result.min.map(p => p.producer),
+        producersMax: result.max.map(p => p.producer)
       }
     });
 
     return result;
   }
-} 
+}

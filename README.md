@@ -1,99 +1,59 @@
 # Golden Raspberry Awards API
 
-A RESTful API for reading and analyzing the list of nominees and winners of the Golden Raspberry Awards for Worst Picture category.
+API RESTful para processar e analisar dados do Golden Raspberry Awards.
+
+## Pré-requisitos
+
+- Node.js
+- Yarn
+
+## Configuração
+
+1. Clone o repositório
+2. Instale as dependências:
+```bash
+yarn install
+```
+
+3. Execute as migrações do Prisma:
+```bash
+yarn prisma migrate dev
+```
+
+4. Gere o cliente Prisma:
+```bash
+yarn prisma generate
+```
+
+## Executando o projeto
+
+Para desenvolvimento:
+```bash
+yarn dev
+```
+
+Para produção:
+```bash
+yarn build
+yarn start
+```
+
+Para testes:
+```bash
+yarn test
+```
+
+## Endpoints
+
+- `GET /awards/intervals`: Retorna os produtores com maior e menor intervalo entre prêmios
 
 ## Features
 
-- CSV file upload and processing
-- Calculation of producer award intervals
-- Data validation and error handling
-- In-memory database using SQLite
-- Integration tests coverage
-
-## Prerequisites
-
-- Node.js (v18 or higher)
-- npm (v9 or higher)
-
-## Installation
-
-1. Clone the repository:
-```bash
-git clone https://github.com/yourusername/gra-api.git
-cd gra-api
-```
-
-2. Install dependencies:
-```bash
-npm install
-```
-
-3. Create a `logs` directory in the project root:
-```bash
-mkdir logs
-```
-
-## Running the Application
-
-1. Start the server:
-```bash
-npm run dev
-```
-
-The server will start on port 3000.
-
-## Running Tests
-
-```bash
-npm test
-```
-
-## API Endpoints
-
-### 1. Upload CSV File
-```
-POST /upload/csv
-
-Content-Type: multipart/form-data
-
-Request Body:
-- file: CSV file with the following columns:
-  - year: Movie release year
-  - title: Movie title
-  - studios: Production studios
-  - producers: Movie producers
-  - winner: Award winner (yes/"")
-
-Response:
-{
-  "message": "csv file processed successfully"
-}
-```
-
-### 2. Get Award Intervals
-```
-GET /awards/intervals
-
-Response:
-{
-  "min": [
-    {
-      "producer": "Producer 1",
-      "interval": 1,
-      "previousWin": 2008,
-      "followingWin": 2009
-    }
-  ],
-  "max": [
-    {
-      "producer": "Producer 2",
-      "interval": 99,
-      "previousWin": 1900,
-      "followingWin": 1999
-    }
-  ]
-}
-```
+- Carregamento automático do arquivo CSV da raiz do projeto
+- Cálculo de intervalos de prêmios por produtor
+- Validação de dados e tratamento de erros
+- Banco de dados em memória usando H2
+- Cobertura de testes de integração
 
 ## CSV File Format
 
@@ -118,7 +78,8 @@ A sample CSV file with the complete list of nominees and winners is available in
 ## Error Handling
 
 The API handles various error cases:
-- Invalid file types
+- Missing CSV file
+- Invalid file format
 - Missing required columns
 - Invalid year values
 - Empty producer fields
@@ -129,7 +90,7 @@ All errors are logged in the `logs/app.log` file.
 ## Technical Details
 
 - Built with Node.js and TypeScript
-- Uses SQLite as an in-memory database
+- Uses H2 as an in-memory database
 - Implements Richardson Maturity Model Level 2
 - Includes comprehensive integration tests
 - Logs all operations and errors

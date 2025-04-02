@@ -27,7 +27,7 @@ export class ValidateCSVUseCase {
     this.logger.debug('Validating record', { correlationId, data: { record } });
     
     const year = parseInt(record.year);
-    if (isNaN(year) || year < 1900 || year > new Date().getFullYear()) {
+    if (isNaN(year) || year < 1900) {
       this.logger.error('Invalid year', { correlationId, data: { year: record.year } });
       errors.push(`Invalid year: ${record.year}`);
     }
@@ -79,6 +79,16 @@ export class ValidateCSVUseCase {
         
         if (validation.isValid) {
           validRecords.push(record);
+          if (record.winner === 'yes') {
+            this.logger.debug('Found winner record', { 
+              correlationId, 
+              data: { 
+                year: record.year,
+                title: record.title,
+                producers: record.producers
+              }
+            });
+          }
         } else {
           invalidRecords.push({ record: index + 1, recordData: record, errors: validation.errors });
         }
@@ -100,7 +110,8 @@ export class ValidateCSVUseCase {
         data: { 
           totalRecords: records.length,
           validRecords: validRecords.length,
-          invalidRecords: invalidRecords.length
+          invalidRecords: invalidRecords.length,
+          winners: validRecords.filter(r => r.winner === 'yes').length
         }
       });
 

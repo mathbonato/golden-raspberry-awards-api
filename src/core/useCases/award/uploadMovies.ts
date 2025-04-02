@@ -29,7 +29,7 @@ export class UploadMoviesUseCase {
         winners: movies.filter(m => m.winner).length
       });
 
-      await this.movieRepository.clearAndLoadMovies(movies);
+      await this.movieRepository.loadMovies(movies);
       this.logger.info('Movies loaded successfully into repository');
     } catch (error) {
       this.logger.error('Error uploading movies', { 

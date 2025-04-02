@@ -1,36 +1,43 @@
 import fastify from 'fastify';
 import cors from '@fastify/cors';
-import multipart from '@fastify/multipart';
-import { PrismaClient } from '@prisma/client';
 import { CalculateIntervalsUseCase } from '../../core/useCases/award/calculateIntervals.ts';
 import { UploadMoviesUseCase } from '../../core/useCases/award/uploadMovies.ts';
 import { ValidateCSVUseCase } from '../../core/useCases/award/validateCSV.ts';
-import { PrismaMovieRepository } from '../database/prisma/movieRepository.ts';
+import { MemoryMovieRepository } from '../database/memory/movieRepository.ts';
 import { AwardController } from './controllers/awardController.ts';
-import { MovieController } from './controllers/movieController.ts';
 import { awardRoutes } from './routes/awardRoutes.ts';
-import { movieRoutes } from './routes/movieRoutes.ts';
+import { readFile } from 'fs/promises';
+import { join } from 'path';
+import { Logger } from '../../utils/logger.ts';
 
 export async function createServer() {
-  const prisma = new PrismaClient();
   const app = fastify();
+  const logger = Logger.getInstance();
 
   await app.register(cors, { origin: true });
 
-  await app.register(multipart, {
-    limits: { fileSize: 5 * 1024 * 1024 }
-  });
-
-  const movieRepository = new PrismaMovieRepository(prisma);
+  const movieRepository = new MemoryMovieRepository();
   const uploadMoviesUseCase = new UploadMoviesUseCase(movieRepository);
   const calculateIntervalsUseCase = new CalculateIntervalsUseCase();
   const validateCSVUseCase = new ValidateCSVUseCase();
 
   const awardController = new AwardController(movieRepository, calculateIntervalsUseCase);
-  const movieController = new MovieController(uploadMoviesUseCase, validateCSVUseCase);
+
+  try {
+    logger.info('Loading initial CSV file');
+    const csvPath = join(process.cwd(), 'Movielist.csv');
+    const fileContent = await readFile(csvPath);
+    const records = await validateCSVUseCase.execute(fileContent);
+    await uploadMoviesUseCase.execute(records);
+    logger.info('Initial CSV file loaded successfully');
+  } catch (error) {
+    logger.error('Error loading initial CSV file', { 
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+    throw error;
+  }
 
   await awardRoutes(app, awardController);
-  await movieRoutes(app, movieController);
 
   return app;
 }
